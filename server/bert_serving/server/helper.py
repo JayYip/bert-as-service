@@ -3,19 +3,20 @@ import logging
 import os
 import sys
 import uuid
+import numpy as np
 
 import zmq
 from zmq.utils import jsonapi
 
-__all__ = ['set_logger', 'send_ndarray', 'get_args_parser', 'check_tf_version', 'auto_bind', 'import_tf']
+__all__ = ['set_logger', 'send_ndarray', 'get_args_parser',
+           'check_tf_version', 'auto_bind', 'import_tf', 'send_dict_ndarray']
 
 
 def set_logger(context, verbose=False):
     logger = logging.getLogger(context)
     logger.setLevel(logging.DEBUG if verbose else logging.INFO)
     formatter = logging.Formatter(
-        '%(levelname)-.1s:' + context + ':[%(filename).3s:%(funcName).3s:%(lineno)3d]:%(message)s', datefmt=
-        '%m-%d %H:%M:%S')
+        '%(levelname)-.1s:' + context + ':[%(filename).3s:%(funcName).3s:%(lineno)3d]:%(message)s', datefmt='%m-%d %H:%M:%S')
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG if verbose else logging.INFO)
     console_handler.setFormatter(formatter)
@@ -28,6 +29,19 @@ def send_ndarray(src, dest, X, req_id=b'', flags=0, copy=True, track=False):
     """send a numpy array with metadata"""
     md = dict(dtype=str(X.dtype), shape=X.shape)
     return src.send_multipart([dest, jsonapi.dumps(md), X, req_id], flags, copy=copy, track=track)
+
+
+def send_dict_ndarray(src, dest, X, req_id=b'', flags=0, copy=True, track=False):
+    """send a dict of numpy array with metadata"""
+    md = {}
+    for problem in X:
+        md[problem] = dict(
+            dtype=str(X[problem].dtype),
+            shape=X[problem].shape)
+        X[problem] = X[problem].tolist()
+    # md = dict(dtype=str(X.dtype), shape=X.shape)
+    return src.send_multipart(
+        [dest, jsonapi.dumps(md), jsonapi.dumps(X), req_id], flags, copy=copy, track=track)
 
 
 def get_args_parser():
@@ -56,7 +70,8 @@ def get_args_parser():
                         help='the encoder layer(s) that receives pooling. \
                         Give a list in order to concatenate several layers into one')
     group2.add_argument('-pooling_strategy', type=PoolingStrategy.from_string,
-                        default=PoolingStrategy.REDUCE_MEAN, choices=list(PoolingStrategy),
+                        default=PoolingStrategy.REDUCE_MEAN, choices=list(
+                            PoolingStrategy),
                         help='the pooling strategy for generating encoding vectors')
     group2.add_argument('-mask_cls_sep', action='store_true', default=False,
                         help='masking the embedding on [CLS] and [SEP] with zero. \
@@ -95,34 +110,42 @@ def get_args_parser():
 
     parser.add_argument('-verbose', action='store_true', default=False,
                         help='turn on tensorflow logging for debug')
-    parser.add_argument('-version', action='version', version='%(prog)s ' + __version__)
+    parser.add_argument('-version', action='version',
+                        version='%(prog)s ' + __version__)
+
+    parser.add_argument('-problem', type=str,
+                        default='CWS|NER|POS', help='Problems to serve.')
     return parser
 
 
 def check_tf_version():
     import tensorflow as tf
     tf_ver = tf.__version__.split('.')
-    assert int(tf_ver[0]) >= 1 and int(tf_ver[1]) >= 10, 'Tensorflow >=1.10 is required!'
+    assert int(tf_ver[0]) >= 1 and int(
+        tf_ver[1]) >= 10, 'Tensorflow >=1.10 is required!'
     return tf_ver
 
 
 def import_tf(device_id=-1, verbose=False):
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1' if device_id < 0 else str(device_id)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1' if device_id < 0 else str(
+        device_id)
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' if verbose else '3'
     import tensorflow as tf
-    tf.logging.set_verbosity(tf.logging.DEBUG if verbose else tf.logging.ERROR)
+    tf.logging.set_verbosity(
+        tf.logging.DEBUG if verbose else tf.logging.ERROR)
     return tf
 
 
 def auto_bind(socket):
     if os.name == 'nt':  # for Windows
-        socket.bind_to_random_port('tcp://127.0.0.1')
+        socket.bind_to_random_port('tcp://*')
     else:
         # Get the location for tmp file for sockets
         try:
             tmp_dir = os.environ['ZEROMQ_SOCK_TMP_DIR']
             if not os.path.exists(tmp_dir):
-                raise ValueError('This directory for sockets ({}) does not seems to exist.'.format(tmp_dir))
+                raise ValueError(
+                    'This directory for sockets ({}) does not seems to exist.'.format(tmp_dir))
             tmp_dir = os.path.join(tmp_dir, str(uuid.uuid1())[:8])
         except KeyError:
             tmp_dir = '*'
@@ -134,6 +157,8 @@ def auto_bind(socket):
 def get_run_args(parser_fn=get_args_parser, printed=True):
     args = parser_fn().parse_args()
     if printed:
-        param_str = '\n'.join(['%20s = %s' % (k, v) for k, v in sorted(vars(args).items())])
-        print('usage: %s\n%20s   %s\n%s\n%s\n' % (' '.join(sys.argv), 'ARG', 'VALUE', '_' * 50, param_str))
+        param_str = '\n'.join(['%20s = %s' % (k, v)
+                               for k, v in sorted(vars(args).items())])
+        print('usage: %s\n%20s   %s\n%s\n%s\n' %
+              (' '.join(sys.argv), 'ARG', 'VALUE', '_' * 50, param_str))
     return args

@@ -6,7 +6,6 @@ import sys
 import threading
 import time
 import uuid
-import warnings
 from collections import namedtuple
 
 import numpy as np
@@ -16,19 +15,21 @@ from zmq.utils import jsonapi
 __all__ = ['__version__', 'BertClient']
 
 # in the future client version must match with server version
-__version__ = '1.6.8'
+__version__ = '1.0.0'
 
 if sys.version_info >= (3, 0):
     _py2 = False
     _str = str
     _buffer = memoryview
-    _unicode = lambda x: x
+
+    def _unicode(x): return x
 else:
     # make it compatible for py2
     _py2 = True
     _str = basestring
     _buffer = buffer
-    _unicode = lambda x: [BertClient._force_to_unicode(y) for y in x]
+
+    def _unicode(x): return [BertClient._force_to_unicode(y) for y in x]
 
 Response = namedtuple('Response', ['id', 'content'])
 
@@ -37,7 +38,7 @@ class BertClient:
     def __init__(self, ip='localhost', port=5555, port_out=5556,
                  output_fmt='ndarray', show_server_config=False,
                  identity=None, check_version=True, check_length=True,
-                 timeout=-1):
+                 timeout=5000):
         """ A client object connected to a BertServer
 
         Create a BertClient that connects to a BertServer.
@@ -71,7 +72,7 @@ class BertClient:
         :param identity: the UUID of this client
         :param check_version: check if server has the same version as client, raise AttributeError if not the same
         :param check_length: check if server `max_seq_len` is less than the sentence length before sent
-        :param timeout: set the timeout (milliseconds) for receive operation on the client, -1 means no timeout and wait until result returns
+        :param timeout: set the timeout (milliseconds) for receive operation on the client
         """
 
         self.context = zmq.Context()
@@ -128,7 +129,8 @@ class BertClient:
         self.context.term()
 
     def _send(self, msg, msg_len=0):
-        self.sender.send_multipart([self.identity, msg, b'%d' % self.request_id, b'%d' % msg_len])
+        self.sender.send_multipart(
+            [self.identity, msg, b'%d' % self.request_id, b'%d' % msg_len])
         self.pending_request.add(self.request_id)
         self.request_id += 1
 
@@ -140,9 +142,11 @@ class BertClient:
 
     def _recv_ndarray(self):
         request_id, response = self._recv()
-        arr_info, arr_val = jsonapi.loads(response[1]), response[2]
-        X = np.frombuffer(_buffer(arr_val), dtype=str(arr_info['dtype']))
-        return Response(request_id, self.formatter(X.reshape(arr_info['shape'])))
+        _, arr_val = jsonapi.loads(
+            response[1]), jsonapi.loads(response[2])
+
+        # X = np.frombuffer(_buffer(arr_val), dtype=str(arr_info['dtype']))
+        return Response(request_id, arr_val)
 
     @property
     def status(self):
@@ -166,31 +170,7 @@ class BertClient:
             'timeout': self.timeout
         }
 
-    def _timeout(func):
-        def arg_wrapper(self, *args, **kwargs):
-            if 'blocking' in kwargs and not kwargs['blocking']:
-                # override client timeout setting if `func` is called in non-blocking way
-                self.receiver.setsockopt(zmq.RCVTIMEO, -1)
-            else:
-                self.receiver.setsockopt(zmq.RCVTIMEO, self.timeout)
-            try:
-                return func(self, *args, **kwargs)
-            except zmq.error.Again as _e:
-                t_e = TimeoutError(
-                    'no response from the server (with "timeout"=%d ms), please check the following:'
-                    'is the server still online? is the network broken? are "port" and "port_out" correct? '
-                    'are you encoding a huge amount of data whereas the timeout is too small for that?' % self.timeout)
-                if _py2:
-                    raise t_e
-                else:
-                    raise t_e from _e
-            finally:
-                self.receiver.setsockopt(zmq.RCVTIMEO, -1)
-
-        return arg_wrapper
-
     @property
-    @_timeout
     def server_status(self):
         """
             Get the current status of the server connected to this client
@@ -199,11 +179,21 @@ class BertClient:
         :rtype: dict[str, str]
 
         """
-        self.receiver.setsockopt(zmq.RCVTIMEO, self.timeout)
-        self._send(b'SHOW_CONFIG')
-        return jsonapi.loads(self._recv().content[1])
+        try:
+            self.receiver.setsockopt(zmq.RCVTIMEO, self.timeout)
+            self._send(b'SHOW_CONFIG')
+            return jsonapi.loads(self._recv().content[1])
+        except zmq.error.Again as _e:
+            t_e = TimeoutError(
+                'no response from the server (with "timeout"=%d ms), '
+                'is the server on-line? is network broken? are "port" and "port_out" correct?' % self.timeout)
+            if _py2:
+                raise t_e
+            else:
+                raise t_e from _e
+        finally:
+            self.receiver.setsockopt(zmq.RCVTIMEO, -1)
 
-    @_timeout
     def encode(self, texts, blocking=True, is_tokenized=False):
         """ Encode a list of strings to a list of vectors
 
@@ -228,12 +218,10 @@ class BertClient:
 
         :type is_tokenized: bool
         :type blocking: bool
-        :type timeout: bool
         :type texts: list[str] or list[list[str]]
         :param is_tokenized: whether the input texts is already tokenized
         :param texts: list of sentence to be encoded. Larger list for better efficiency.
         :param blocking: wait until the encoded result is returned from the server. If false, will immediately return.
-        :param timeout: throw a timeout error when the encoding takes longer than the predefined timeout.
         :return: encoded sentence/token-level embeddings, rows correspond to sentences
         :rtype: numpy.ndarray or list[list[float]]
 
@@ -244,12 +232,12 @@ class BertClient:
             self._check_input_lst_str(texts)
 
         if self.length_limit and not self._check_length(texts, self.length_limit, is_tokenized):
-            warnings.warn('some of your sentences have more tokens than "max_seq_len=%d" set on the server, '
-                          'as consequence you may get less-accurate or truncated embeddings.\n'
-                          'here is what you can do:\n'
-                          '- disable the length-check by create a new "BertClient(check_length=False)" '
-                          'when you just want to ignore this warning\n'
-                          '- or, start a new server with a larger "max_seq_len"' % self.length_limit)
+            print('some of your sentences have more tokens than "max_seq_len=%d" set on the server, '
+                  'as consequence you may get less-accurate or truncated embeddings.\n'
+                  'here is what you can do:\n'
+                  '- disable the length-check by create a new "BertClient(check_length=False)" '
+                  'when you just want to ignore this warning\n'
+                  '- or, start a new server with a larger "max_seq_len"' % self.length_limit)
 
         texts = _unicode(texts)
         self._send(jsonapi.dumps(texts), len(texts))
@@ -335,13 +323,15 @@ class BertClient:
     @staticmethod
     def _check_input_lst_str(texts):
         if not isinstance(texts, list):
-            raise TypeError('"%s" must be %s, but received %s' % (texts, type([]), type(texts)))
+            raise TypeError('"%s" must be %s, but received %s' %
+                            (texts, type([]), type(texts)))
         if not len(texts):
             raise ValueError(
                 '"%s" must be a non-empty list, but received %s with %d elements' % (texts, type(texts), len(texts)))
         for idx, s in enumerate(texts):
             if not isinstance(s, _str):
-                raise TypeError('all elements in the list must be %s, but element %d is %s' % (type(''), idx, type(s)))
+                raise TypeError('all elements in the list must be %s, but element %d is %s' % (
+                    type(''), idx, type(s)))
             if not s.strip():
                 raise ValueError(
                     'all elements in the list must be non-empty string, but element %d is %s' % (idx, repr(s)))
@@ -349,7 +339,8 @@ class BertClient:
     @staticmethod
     def _check_input_lst_lst_str(texts):
         if not isinstance(texts, list):
-            raise TypeError('"texts" must be %s, but received %s' % (type([]), type(texts)))
+            raise TypeError('"texts" must be %s, but received %s' %
+                            (type([]), type(texts)))
         if not len(texts):
             raise ValueError(
                 '"texts" must be a non-empty list, but received %s with %d elements' % (type(texts), len(texts)))
