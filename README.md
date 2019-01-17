@@ -1,7 +1,7 @@
 
 # bert-multitask-as-service
 
-This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service). This repo is for being able to serve model trained by [bert-multitask-learning](https://github.com/JayYip/bert-multitask-learning). No major change other than that.
+This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service). This repo is for serving model trained by [bert-multitask-learning](https://github.com/JayYip/bert-multitask-learning). No major change other than that.
 
 ## Install
 
