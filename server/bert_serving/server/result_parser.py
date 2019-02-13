@@ -19,7 +19,7 @@ def merge_entity(tokens, labels):
         elif label[0] == 'B':
             merged_tokens.append(token)
             merged_labels.append(label[2:])
-        elif label[0] == 'I':
+        elif label[0] in ['I', 'M', 'E']:
             try:
                 merged_tokens[-1] += token
             except IndexError:
@@ -39,6 +39,7 @@ def ner(pred, label_encoder, tokenizer, problem, extract_ent=True):
 
     for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
         tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        tokens = [t.replace('[unused1]', ' ') for t in tokens]
         labels = label_encoder.inverse_transform(ner_pred)
 
         tokens, labels = remove_special_tokens(tokens, labels)
@@ -60,11 +61,12 @@ def cws(pred, label_encoder, tokenizer, problem):
 
     for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
         tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        tokens = [t.replace('[unused1]', ' ') for t in tokens]
         labels = label_encoder.inverse_transform(ner_pred)
         tokens, labels = remove_special_tokens(tokens, labels)
         output_str = ''
         for char, char_label in zip(tokens, labels):
-            if char_label in ['s', 'e']:
+            if char_label.lower() in ['s', 'e', 'o']:
                 output_str += char + ' '
             else:
                 output_str += char
@@ -78,6 +80,7 @@ def pos(pred, label_encoder, tokenizer, problem):
 
     for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
         tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        tokens = [t.replace('[unused1]', ' ') for t in tokens]
         labels = label_encoder.inverse_transform(ner_pred)
 
         tokens, labels = remove_special_tokens(tokens, labels)
@@ -91,22 +94,23 @@ def pos(pred, label_encoder, tokenizer, problem):
 
 def parse_prediction(pred, label_encoder_dict, tokenizer):
     for problem in label_encoder_dict:
-        if problem == 'NER':
+        if 'NER' in problem.upper():
             pred[problem] = np.array(ner(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
-        elif problem == 'CWS':
+        elif 'CWS' in problem.upper():
             pred[problem] = np.array(cws(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
-        elif problem == 'POS':
+        elif 'POS' in problem.upper():
             pred[problem] = np.array(pos(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
+
     return pred

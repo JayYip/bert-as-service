@@ -10,12 +10,7 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from multiprocessing import Process
-from multiprocessing.pool import Pool
 import tensorflow as tf
-from tensorflow.contrib.nccl.python.ops import nccl_ops
-
-from tensorflow.python import pywrap_tensorflow as c_api
-from tensorflow.core.framework import op_def_pb2
 
 import numpy as np
 import zmq
@@ -24,11 +19,10 @@ from termcolor import colored
 from zmq.utils import jsonapi
 import re
 
-from .bert.tokenization import FullTokenizer
-
-from .bert_multitask_learning.model_fn import BertMultiTask
+from .bert_multitask_learning.tokenization import FullTokenizer
 from .bert_multitask_learning.params import Params
 from .bert_multitask_learning.utils import get_or_make_label_encoder
+from .bert_multitask_learning.input_fn import to_serving_input
 
 from .helper import *
 from .zmq_decor import multi_socket
@@ -57,7 +51,7 @@ class BertServer(threading.Thread):
             colored('VENTILATOR', 'magenta'), args.verbose)
 
         self.model_dir = args.model_dir
-        self.max_seq_len = args.max_seq_len
+        # self.max_seq_len = args.max_seq_len
         self.num_worker = args.num_worker
         self.max_batch_size = args.max_batch_size
         # optimize concurrency for multi-clients
@@ -82,11 +76,11 @@ class BertServer(threading.Thread):
         base_dir, dir_name = os.path.split(self.model_dir)
         params.assign_problem(
             self.args.problem, base_dir=base_dir, dir_name=dir_name)
+        params.from_json()
+        self.max_seq_len = params.max_seq_len
         setattr(self.args, 'params', params)
-        with Pool(processes=1) as pool:
-            # optimize the graph, must be done in another process
-            from .graph import optimize_graph
-            self.graph_path = pool.apply(optimize_graph, (self.args,))
+
+        self.graph_path = os.path.join(self.model_dir, 'export_model')
         # from .graph import optimize_graph
         # self.graph_path = optimize_graph(self.args, self.logger)
         if self.graph_path:
@@ -353,7 +347,7 @@ class BertWorker(Process):
         self.device_id = device_id
         self.logger = set_logger(
             colored('WORKER-%d' % self.worker_id, 'yellow'), args.verbose)
-        self.max_seq_len = args.max_seq_len
+        # self.max_seq_len = args.max_seq_len
         self.mask_cls_sep = args.mask_cls_sep
         self.daemon = True
         self.exit_flag = multiprocessing.Event()
@@ -368,15 +362,17 @@ class BertWorker(Process):
         self.graph_path = graph_path
         self.args = args
 
-        params = Params()
+        self.params = Params()
         base_dir, dir_name = os.path.split(self.model_dir)
-        params.assign_problem(
+        self.params.assign_problem(
             self.args.problem, base_dir=base_dir, dir_name=dir_name)
+        self.params.from_json()
+        self.max_seq_len = self.params.max_seq_len
         self.problem_list = sorted(re.split(r'[&|]', self.args.problem))
 
         self.label_encoder_dict = {
-            problem: get_or_make_label_encoder(params, problem, 'predict') for problem in self.problem_list}
-        self.tokenizer = FullTokenizer(params.vocab_file)
+            problem: get_or_make_label_encoder(self.params, problem, 'predict') for problem in self.problem_list}
+        self.tokenizer = FullTokenizer(self.params.vocab_file)
 
     def close(self):
         self.logger.info('shutting down...')
@@ -390,11 +386,6 @@ class BertWorker(Process):
         from tensorflow.python.estimator.run_config import RunConfig
         from tensorflow.python.estimator.model_fn import EstimatorSpec
 
-        # params = Params()
-        # base_dir, dir_name = os.path.split(self.model_dir)
-        # params.assign_problem(self.args.problem, base_dir=base_dir, dir_name=dir_name)
-        # model = BertMultiTask(params=params)
-        # model_fn = model.get_model_fn(warm_start=False)
         self.problem_list = sorted(re.split(r'[&|]', self.args.problem))
 
         def model_fn(features, labels, mode, params):
@@ -456,7 +447,8 @@ class BertWorker(Process):
 
     def input_fn_builder(self, socks, tf):
         from .bert.extract_features import convert_lst_to_features
-        from .bert.tokenization import FullTokenizer
+        # from .bert.tokenization import FullTokenizer
+        from .bert_multitask_learning.tokenization import FullTokenizer
 
         def gen():
             tokenizer = FullTokenizer(
@@ -477,14 +469,22 @@ class BertWorker(Process):
                             sock_idx, len(msg), client_id))
                         # check if msg is a list of list, if yes consider the input is already tokenized
                         is_tokenized = all(isinstance(el, list) for el in msg)
-                        tmp_f = list(convert_lst_to_features(msg, self.max_seq_len, tokenizer, self.logger,
-                                                             is_tokenized, self.mask_cls_sep))
-                        yield {
+                        # tmp_f = list(convert_lst_to_features(msg, self.max_seq_len, tokenizer, self.logger,
+                        #                                      is_tokenized, self.mask_cls_sep))
+                        self.params.max_seq_len = self.max_seq_len
+                        tmp_f = to_serving_input(
+                            msg, self.params, mode='predict')
+
+                        yield_dict = {
                             'client_id': client_id,
-                            'input_ids': [f.input_ids for f in tmp_f],
-                            'input_mask': [f.input_mask for f in tmp_f],
-                            'segment_ids': [f.input_type_ids for f in tmp_f]
+                            'input_ids': [],
+                            'input_mask': [],
+                            'segment_ids': []
                         }
+                        for d in tmp_f:
+                            for k in d:
+                                yield_dict[k].append(d[k])
+                        yield yield_dict
 
         def input_fn():
             return (tf.data.Dataset.from_generator(
