@@ -1,8 +1,7 @@
 
 # bert-multitask-as-service
 
-This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service). This repo is for serving model trained by [bert-multitask-learning](https://github.com/JayYip/bert-multitask-learning). No major change other than that.
-
+This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service). 
 ## Install
 
 ### Install Server
@@ -22,9 +21,9 @@ pip install .
 
 ## Getting Started
 
-1. Train model using [bert-multitask-learning](https://github.com/JayYip/bert-multitask-learning).
+1. Train model.
 
-    `export_model`, `params.json`, `vocab.txt`, `bert_config.json` and corresponding label encoder should be located in the model_dir folder.
+    A typical trained checkpoint dir looks like below.
 
     ```text
     CWS_NER_POS_ckpt/
@@ -32,9 +31,26 @@ pip install .
     ├── NER_label_encoder.pkl
     ├── POS_label_encoder.pkl
     ├── bert_config.json
+    ├── checkpoint
+    ├── events.out.tfevents.1547032536.8ef83f687c31
+    ├── graph.pbtxt
+    ├── model.ckpt-199208.data-00000-of-00001
+    ├── model.ckpt-199208.index
+    ├── model.ckpt-199208.meta
+    ├── model.ckpt-200854.data-00000-of-00001
+    ├── model.ckpt-200854.index
+    ├── model.ckpt-200854.meta
+    ├── model.ckpt-202500.data-00000-of-00001
+    ├── model.ckpt-202500.index
+    ├── model.ckpt-202500.meta
+    ├── model.ckpt-204250.data-00000-of-00001
+    ├── model.ckpt-204250.index
+    ├── model.ckpt-204250.meta
+    ├── model.ckpt-205996.data-00000-of-00001
+    ├── model.ckpt-205996.index
+    ├── model.ckpt-205996.meta
     ├── params.json
-    ├── vocab.txt
-    └── export_model
+    └── vocab.txt
     ```
 
 2. Start server using CLI

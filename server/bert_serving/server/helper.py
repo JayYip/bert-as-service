@@ -46,7 +46,7 @@ def send_dict_ndarray(src, dest, X, req_id=b'', flags=0, copy=True, track=False)
 
 def get_args_parser():
     from . import __version__
-    from .graph import PoolingStrategy
+    # from .graph import PoolingStrategy
 
     parser = argparse.ArgumentParser()
 
@@ -69,10 +69,10 @@ def get_args_parser():
     group2.add_argument('-pooling_layer', type=int, nargs='+', default=[-2],
                         help='the encoder layer(s) that receives pooling. \
                         Give a list in order to concatenate several layers into one')
-    group2.add_argument('-pooling_strategy', type=PoolingStrategy.from_string,
-                        default=PoolingStrategy.REDUCE_MEAN, choices=list(
-                            PoolingStrategy),
-                        help='the pooling strategy for generating encoding vectors')
+    # group2.add_argument('-pooling_strategy', type=PoolingStrategy.from_string,
+    #                     default=PoolingStrategy.REDUCE_MEAN, choices=list(
+    #                         PoolingStrategy),
+    # help = 'the pooling strategy for generating encoding vectors')
     group2.add_argument('-mask_cls_sep', action='store_true', default=False,
                         help='masking the embedding on [CLS] and [SEP] with zero. \
                         When pooling_strategy is in {CLS_TOKEN, FIRST_TOKEN, SEP_TOKEN, LAST_TOKEN} \
@@ -91,7 +91,7 @@ def get_args_parser():
                         help='maximum number of sequences handled by each worker')
     group3.add_argument('-priority_batch_size', type=int, default=16,
                         help='batch smaller than this size will be labeled as high priority,'
-                             'and jumps forward in the job queue')
+                        'and jumps forward in the job queue')
     group3.add_argument('-cpu', action='store_true', default=False,
                         help='running on CPU (default on GPU)')
     group3.add_argument('-xla', action='store_true', default=False,

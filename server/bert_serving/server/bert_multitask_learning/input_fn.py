@@ -170,7 +170,7 @@ def to_serving_input(input_file_or_list, config: Params, mode='predict'):
     # data_dict['segment_ids'] = []
 
     data_dict = {}
-    for doc in inputs:
+    for doc in tqdm(inputs, desc='Processing Inputs'):
         inputs_a = list(doc)
         tokens, target = tokenize_text_with_seqs(
             tokenizer, inputs_a, None)
