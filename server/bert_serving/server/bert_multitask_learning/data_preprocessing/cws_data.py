@@ -7,8 +7,8 @@ from sklearn.model_selection import train_test_split
 
 from ..tokenization import FullTokenizer
 
-from ..utils import (get_or_make_label_encoder,
-                     create_single_problem_generator)
+from ..utils import get_or_make_label_encoder, TRAIN, EVAL, PREDICT
+from ..create_generators import create_single_problem_generator
 
 
 def process_line_msr_pku(l):
@@ -133,7 +133,10 @@ def CWS(params, mode):
 
     tokenizer = FullTokenizer(vocab_file=params.vocab_file)
     if mode == 'train':
-        file_list = glob.glob('data/cws/training/*.utf8')
+        # file_list = glob.glob('data/cws/training/*.utf8')
+        file_list = [  # 'as_testing_gold.utf8',
+            'cityu_training.utf8', 'msr_training.utf8', 'pku_training.utf8']
+        file_list = [os.path.join('data/cws/training', f) for f in file_list]
     else:
         file_list = [  # 'as_testing_gold.utf8',
             'cityu_test_gold.utf8', 'msr_test_gold.utf8', 'pku_test_gold.utf8']
@@ -147,6 +150,8 @@ def CWS(params, mode):
 
     label_encoder = get_or_make_label_encoder(
         params, 'CWS', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
     return create_single_problem_generator('CWS',
                                            input_list,
@@ -157,7 +162,7 @@ def CWS(params, mode):
                                            mode)
 
 
-def ascws(params, mode):
+def as_cws(params, mode):
 
     tokenizer = FullTokenizer(vocab_file=params.vocab_file)
     if mode == 'train':
@@ -167,21 +172,23 @@ def ascws(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
     label_encoder = get_or_make_label_encoder(
-        params, 'ascws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+        params, 'as_cws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
-    return create_single_problem_generator('ascws',
-                                           inputs,
-                                           target,
+    return create_single_problem_generator('as_cws',
+                                           input_list,
+                                           target_list,
                                            label_encoder,
                                            params,
                                            tokenizer,
                                            mode)
 
 
-def msrcws(params, mode):
+def msr_cws(params, mode):
 
     tokenizer = FullTokenizer(vocab_file=params.vocab_file)
     if mode == 'train':
@@ -191,21 +198,23 @@ def msrcws(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
     label_encoder = get_or_make_label_encoder(
-        params, 'msrcws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+        params, 'msr_cws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
-    return create_single_problem_generator('msrcws',
-                                           inputs,
-                                           target,
+    return create_single_problem_generator('msr_cws',
+                                           input_list,
+                                           target_list,
                                            label_encoder,
                                            params,
                                            tokenizer,
                                            mode)
 
 
-def pkucws(params, mode):
+def pku_cws(params, mode):
 
     tokenizer = FullTokenizer(vocab_file=params.vocab_file)
     if mode == 'train':
@@ -215,21 +224,23 @@ def pkucws(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
     label_encoder = get_or_make_label_encoder(
-        params, 'pkucws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+        params, 'pku_cws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
-    return create_single_problem_generator('pkucws',
-                                           inputs,
-                                           target,
+    return create_single_problem_generator('pku_cws',
+                                           input_list,
+                                           target_list,
                                            label_encoder,
                                            params,
                                            tokenizer,
                                            mode)
 
 
-def cityucws(params, mode):
+def city_cws(params, mode):
 
     tokenizer = FullTokenizer(vocab_file=params.vocab_file)
     if mode == 'train':
@@ -239,14 +250,16 @@ def cityucws(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
     label_encoder = get_or_make_label_encoder(
-        params, 'cityucws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+        params, 'city_cws', mode, ['b', 'm', 'e', 's'], zero_class='[PAD]')
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
-    return create_single_problem_generator('cityucws',
-                                           inputs,
-                                           target,
+    return create_single_problem_generator('city_cws',
+                                           input_list,
+                                           target_list,
                                            label_encoder,
                                            params,
                                            tokenizer,
@@ -262,15 +275,17 @@ def as_domain(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
-    target_list = ['ascws' for _ in target]
-    flat_target_list = ['ascws', 'pkucws', 'cityucws', 'msrcws']
+    target_list = ['as_cws' for _ in target_list]
+    flat_target_list = ['as_cws', 'pku_cws', 'city_cws', 'msr_cws']
     label_encoder = get_or_make_label_encoder(
         params, 'cws_domain', mode, flat_target_list)
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
     return create_single_problem_generator('as_domain',
-                                           inputs,
+                                           input_list,
                                            target_list,
                                            label_encoder,
                                            params,
@@ -287,15 +302,17 @@ def msr_domain(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
-    target_list = ['msrcws' for _ in target]
-    flat_target_list = ['ascws', 'pkucws', 'cityucws', 'msrcws']
+    target_list = ['msr_cws' for _ in target_list]
+    flat_target_list = ['as_cws', 'pku_cws', 'city_cws', 'msr_cws']
     label_encoder = get_or_make_label_encoder(
         params, 'cws_domain', mode, flat_target_list)
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
     return create_single_problem_generator('msr_domain',
-                                           inputs,
+                                           input_list,
                                            target_list,
                                            label_encoder,
                                            params,
@@ -312,15 +329,17 @@ def pku_domain(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
-    target_list = ['pkucws' for _ in target]
-    flat_target_list = ['ascws', 'pkucws', 'cityucws', 'msrcws']
+    target_list = ['pku_cws' for _ in target_list]
+    flat_target_list = ['as_cws', 'pku_cws', 'city_cws', 'msr_cws']
     label_encoder = get_or_make_label_encoder(
         params, 'cws_domain', mode, flat_target_list)
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
     return create_single_problem_generator('pku_domain',
-                                           inputs,
+                                           input_list,
                                            target_list,
                                            label_encoder,
                                            params,
@@ -337,15 +356,17 @@ def cityu_domain(params, mode):
         # file_list = ['msr_test_gold.utf8']
         file_list = [os.path.join('data/cws/gold', f) for f in file_list]
 
-    inputs, target = _process_text_files(file_list)
+    input_list, target_list = _process_text_files(file_list)
 
-    target_list = ['cityucws' for _ in target]
-    flat_target_list = ['ascws', 'pkucws', 'cityucws', 'msrcws']
+    target_list = ['city_cws' for _ in target_list]
+    flat_target_list = ['as_cws', 'pku_cws', 'city_cws', 'msr_cws']
     label_encoder = get_or_make_label_encoder(
         params, 'cws_domain', mode, flat_target_list)
+    if mode == PREDICT:
+        return input_list, target_list, label_encoder
 
     return create_single_problem_generator('cityu_domain',
-                                           inputs,
+                                           input_list,
                                            target_list,
                                            label_encoder,
                                            params,

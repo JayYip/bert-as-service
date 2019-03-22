@@ -92,6 +92,14 @@ def pos(pred, label_encoder, tokenizer, problem):
     return result_list
 
 
+def cls(pred, label_encoder, tokenizer, problem):
+    result_list = []
+    for pred in pred[problem].tolist():
+        label = label_encoder.inverse_transform([np.argmax(pred)])
+        result_list.append(label)
+    return result_list
+
+
 def parse_prediction(pred, label_encoder_dict, tokenizer):
     for problem in label_encoder_dict:
         if 'NER' in problem.upper():
@@ -112,5 +120,12 @@ def parse_prediction(pred, label_encoder_dict, tokenizer):
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
+        elif 'emotion_analysis' in problem.lower():
+            pred[problem] = np.array(cls(
+                pred,
+                label_encoder_dict[problem],
+                tokenizer,
+                problem
+            ))
 
     return pred

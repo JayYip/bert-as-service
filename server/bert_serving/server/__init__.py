@@ -314,10 +314,10 @@ class BertSink(Process):
                     new_tmp_dict = defaultdict(list)
                     for pred_dict in tmp:
                         for problem, pred in pred_dict.items():
-                            new_tmp_dict[problem].append(pred)
-                    for problem in new_tmp_dict:
-                        new_tmp_dict[problem] = np.concatenate(
-                            new_tmp_dict[problem], axis=0)
+                            new_tmp_dict[problem] += pred.tolist()
+                    # for problem in new_tmp_dict:
+                    #     new_tmp_dict[problem] = np.concatenate(
+                    #         new_tmp_dict[problem], axis=0)
 
                     client_addr, req_id = job_info.split(b'#')
                     send_dict_ndarray(sender, client_addr,
@@ -399,7 +399,9 @@ class BertWorker(Process):
                 graph_def,
                 input_map={
                     k + ':0': features[k] for k in input_names},
-                return_elements=['%s_top/%s_predict:0' % (problem, problem) for problem in self.problem_list])
+                return_elements=['%s_top/%s_predict:0' % (
+                    self.params.share_top[problem], self.params.share_top[problem])
+                    for problem in self.params.problem_list])
             prediction_dict = {
                 self.problem_list[ind]: output[ind]
                 for ind in range(len(self.problem_list))}
@@ -473,7 +475,7 @@ class BertWorker(Process):
                         #                                      is_tokenized, self.mask_cls_sep))
                         self.params.max_seq_len = self.max_seq_len
                         tmp_f = to_serving_input(
-                            msg, self.params, mode='predict')
+                            msg, self.params, mode='predict', tokenizer=tokenizer)
 
                         yield_dict = {
                             'client_id': client_id,

@@ -36,9 +36,11 @@ def send_dict_ndarray(src, dest, X, req_id=b'', flags=0, copy=True, track=False)
     md = {}
     for problem in X:
         md[problem] = dict(
-            dtype=str(X[problem].dtype),
-            shape=X[problem].shape)
-        X[problem] = X[problem].tolist()
+            dtype='str',
+            shape=[])
+        if not isinstance(X[problem], list):
+            X[problem] = X[problem].tolist()
+
     # md = dict(dtype=str(X.dtype), shape=X.shape)
     return src.send_multipart(
         [dest, jsonapi.dumps(md), jsonapi.dumps(X), req_id], flags, copy=copy, track=track)

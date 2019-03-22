@@ -15,20 +15,20 @@ class Params():
         self.run_problem_list = []
 
         self.problem_type = {
-            'WeiboNER': 'seq_tag',
-            'WeiboFakeCLS': 'cls',
-            'WeiboSegment': 'seq_tag',
-            'WeiboPretrain': 'pretrain',
+            'weibo_ner': 'seq_tag',
+            'weibo_fake_cls': 'cls',
+            'weibo_cws': 'seq_tag',
+            'weibo_pretrain': 'pretrain',
             'CWS': 'seq_tag',
             'NER': 'seq_tag',
-            'CTBPOS': 'seq_tag',
-            'CTBCWS': 'seq_tag',
-            'ascws': 'seq_tag',
-            'msrcws': 'seq_tag',
-            'pkucws': 'seq_tag',
-            'cityucws': 'seq_tag',
-            'bosonner': 'seq_tag',
-            'msraner': 'seq_tag',
+            'ctb_pos': 'seq_tag',
+            'ctb_cws': 'seq_tag',
+            'as_cws': 'seq_tag',
+            'msr_cws': 'seq_tag',
+            'pku_cws': 'seq_tag',
+            'city_cws': 'seq_tag',
+            'boson_ner': 'seq_tag',
+            'msra_ner': 'seq_tag',
             'POS': 'seq_tag',
             'weibo_fake_seq2seq_tag': 'seq2seq_tag',
             'weibo_fake_seq_tag': 'seq_tag',
@@ -41,77 +41,19 @@ class Params():
             'as_domain': 'cls',
             'msr_domain': 'cls',
             'pku_domain': 'cls',
-            'cityu_domain': 'cls'
-        }
-        # self.problem = 'cls'
-
-        self.num_classes = {
-            # num of classes of problems
-            # including padding if padding is needed
-            'WeiboNER': 10,
-            'WeiboFakeCLS': 2,
-            'WeiboSegment': 4,
-            'next_sentence': 2,
-            'CWS': 5,
-            'NER': 10,
-            'CTBPOS': 62,
-            'CTBCWS': 5,
-            'ascws': 5,
-            'msrcws': 5,
-            'pkucws': 5,
-            'cityucws': 5,
-            # 'bosonner': 10,
-            # 'msraner': 10,
-            'msraner': 8,
-            'bosonner': 14,
-            'POS': 62,
-            'weibo_fake_seq2seq_tag': 4,
-            'weibo_fake_seq_tag': 10,
-            'ontonotes_ner': 18,
-            'ontonotes_cws': 5,
-            # add '[SEP]' as eos token
-            'ontonotes_chunk': 192,
-            'boson_domain': 3,
-            'Weibo_domain': 3,
-            'msra_domain': 3,
-            'as_domain': 4,
-            'msr_domain': 4,
-            'pku_domain': 4,
-            'cityu_domain': 4
-        }
-
-        self.data_num_dict = {
-            'CWS': 157952,
-            'NER': 60000,
-            'CTBPOS': 47400,
-            'CTBCWS': 47400,
-            'POS': 47400,
-            'ascws': 708953,
-            'msrcws': 86924,
-            'cityucws': 53019,
-            'pkucws': 19056,
-            'msraner': 46364,
-            'bosonner': 30000,
-            'ontonotes_ner': 39086,
-            'ontonotes_cws': 39086,
-            'ontonotes_chunk': 39086,
-            'boson_domain': 10000,
-            'msra_domain': 46364,
-            'as_domain': 708953,
-            'msr_domain': 86924,
-            'pku_domain': 53019,
-            'cityu_domain': 19056
+            'cityu_domain': 'cls',
+            'emotion_analysis': 'cls'
         }
 
         # specify this will make key reuse values top
-        # that it, WeiboNER problem will use NER's top
+        # that it, weibo_ner problem will use NER's top
         self.share_top = {
-            'CTBCWS': 'CWS',
-            'ascws': 'CWS',
-            'msrcws': 'CWS',
-            'pkucws': 'CWS',
-            'cityucws': 'CWS',
-            'CTBPOS': 'POS',
+            'ctb_cws': 'CWS',
+            'as_cws': 'CWS',
+            'msr_cws': 'CWS',
+            'pku_cws': 'CWS',
+            'city_cws': 'CWS',
+            'ctb_pos': 'POS',
             'boson_domain': 'ner_domain',
             'Weibo_domain': 'ner_domain',
             'msra_domain': 'ner_domain',
@@ -120,9 +62,9 @@ class Params():
             'pku_domain': 'cws_domain',
             'cityu_domain': 'cws_domain'
         }
-
-        self.eos_id = {
-        }
+        for p in self.problem_type:
+            if p not in self.share_top:
+                self.share_top[p] = p
 
         self.multitask_balance_type = 'data_balanced'
         # self.multitask_balance_type = 'problem_balanced'
@@ -134,7 +76,7 @@ class Params():
         # training
         self.init_lr = 2e-5
         self.batch_size = 32
-        self.train_epoch = 30
+        self.train_epoch = 15
         self.freeze_step = 0
         self.prefetch = 5000
 
@@ -142,8 +84,11 @@ class Params():
         self.dropout_keep_prob = 0.9
         self.max_seq_len = 128
         self.use_one_hot_embeddings = True
-        self.label_smoothing = 0.1
+        self.label_smoothing = 0.0
         self.crf = True
+        self.bert_num_hidden_layer = 12
+        self.hidden_dense = False
+        self.freeze_hidden = False
 
         # seq2seq
         self.decoder_num_hidden_layers = 3
@@ -157,10 +102,14 @@ class Params():
         self.augument_mask_lm = False
         self.augument_rate = 0.5
         self.distillation = False
+        # dep since not good
+        # self.mutual_prediction = False
+        self.grid_transformer = False
+        self.task_transformer = False
 
         # random replace punctuation by some prob to
         # ease the punctuation sensitive problem
-        self.punc_replace_prob = 0.5
+        self.punc_replace_prob = 0.0
         self.punc_list = list(',.!?！。？，、')
         self.hidden_gru = False
         self.label_transfer_gru = False
@@ -180,7 +129,7 @@ class Params():
         self.mask_lm_hidden_act = 'gelu'
         self.mask_lm_initializer_range = 0.02
 
-        self.label_transfer_problem = None
+        self.train_problem = None
 
         # get generator function for each problem
         self.read_data_fn = {}
@@ -203,7 +152,7 @@ class Params():
 
         Arguments:
             flag_string {str} -- run problem string
-            example: CWS|POS|WeiboNER&WeiboSegment
+            example: CWS|POS|weibo_ner&weibo_cws
 
         Keyword Arguments:
             gpu {int} -- number of gpu use for training, this
@@ -213,64 +162,20 @@ class Params():
             dir_name {str} -- dir name for ckpt, if None,
                 will be created automatically (default: {None})
         """
-        self.problem_str = flag_string
-        # Parse problem string
-        self.run_problem_list = []
-        for flag_chunk in flag_string.split('|'):
 
-            if '&' not in flag_chunk:
-                problem_type = {}
-                problem_type[flag_chunk] = self.problem_type[flag_chunk]
-                self.run_problem_list.append(problem_type)
-            else:
-                problem_type = {}
-                for problem in flag_chunk.split('&'):
-                    problem_type[problem] = self.problem_type[problem]
-                self.run_problem_list.append(problem_type)
-        if self.label_transfer and self.label_transfer_problem is None:
-            self.label_transfer_problem = [p for p in self.run_problem_list]
-
-        problem_list = sorted(re.split(r'[&|]', flag_string))
-
+        self.problem_list = self.parse_problem_string(flag_string)
         # create dir and get vocab, config
-        base = base_dir if base_dir is not None else 'tmp'
+        self.prepare_dir(base_dir, dir_name, self.problem_list)
 
-        dir_name = dir_name if dir_name is not None else '_'.join(
-            problem_list)+'_ckpt'
-        self.ckpt_dir = os.path.join(base, dir_name)
-        create_path(self.ckpt_dir)
-        self.params_path = os.path.join(self.ckpt_dir, 'params.json')
-        try:
-            shutil.copy2(os.path.join(self.init_checkpoint,
-                         'vocab.txt'), self.ckpt_dir)
-            shutil.copy2(os.path.join(self.init_checkpoint,
-                                    'bert_config.json'), self.ckpt_dir)
-        except FileNotFoundError:
-            pass
-        self.vocab_file = os.path.join(self.ckpt_dir, 'vocab.txt')
-        self.bert_config = BertConfig.from_json_file(
-            os.path.join(self.ckpt_dir, 'bert_config.json'))
-        self.bert_config_dict = self.bert_config.__dict__
-        with open(self.vocab_file, 'r', encoding='utf8') as vf:
-            self.vocab_size = len(vf.readlines())
-
-        # update data_num and train_steps
-        self.data_num = 0
-        for problem in problem_list:
-            if problem not in self.data_num_dict:
-                self.data_num += len(
-                    list(self.read_data_fn[problem](self, 'train')))
-                self.data_num_dict[problem] = len(
-                    list(self.read_data_fn[problem](self, 'train')))
-            else:
-                self.data_num += self.data_num_dict[problem]
+        self.get_data_info(self.problem_list, self.ckpt_dir)
 
         self.shuffle_buffer = min([200000, self.data_num])
-
-        if self.problem_type[problem] == 'pretrain':
-            dup_fac = self.dupe_factor
-        else:
-            dup_fac = 1
+        for problem in self.problem_list:
+            if self.problem_type[problem] == 'pretrain':
+                dup_fac = self.dupe_factor
+                break
+            else:
+                dup_fac = 1
         self.train_steps = int((
             self.data_num * self.train_epoch * dup_fac) / (self.batch_size*gpu))
         self.num_warmup_steps = int(0.1 * self.train_steps)
@@ -278,16 +183,6 @@ class Params():
         # linear scale learing rate
         self.lr = self.init_lr * gpu
 
-        # get eos_id
-        for problem in problem_list:
-            try:
-                le = get_or_make_label_encoder(self, problem, 'predict')
-                if EOS_TOKEN in le.encode_dict:
-                    self.eos_id[problem] = le.transform([EOS_TOKEN])[0]
-            except FileNotFoundError:
-                pass
-
-        self.to_json()
 
     @property
     def features_to_dump(self):
@@ -308,6 +203,7 @@ class Params():
                 'use_one_hot_embeddings',
                 'label_smoothing',
                 'crf',
+                'bert_num_hidden_layer',
 
                 'decoder_num_hidden_layers',
                 'beam_size',
@@ -330,7 +226,13 @@ class Params():
                 'punc_replace_prob',
                 'hidden_gru',
                 'label_transfer_gru',
-                'label_transfer_gru_hidden_size']
+                'label_transfer_gru_hidden_size',
+                # 'mutual_prediction',
+                'grid_transformer',
+                'hidden_dense',
+                'task_transformer',
+                'freeze_hidden',
+                'train_problem']
 
     def to_json(self):
         dump_dict = {}
@@ -347,3 +249,102 @@ class Params():
             dump_dict = json.load(f)
         for att in dump_dict:
             setattr(self, att, dump_dict[att])
+        self.bert_config.num_hidden_layers = dump_dict['bert_num_hidden_layer']
+
+    def get_data_info(self, problem_list, base):
+        '''Get number of data, number of classes of data and eos_id of data.
+
+        Arguments:
+            problem_list {list} -- problem list
+            base {str} -- path to store data_info.json
+        '''
+
+        json_path = os.path.join(base, 'data_info.json')
+        if os.path.exists(json_path):
+            data_info = json.load(open(json_path, 'r', encoding='utf8'))
+            self.data_num_dict = data_info['data_num']
+            self.num_classes = data_info['num_classes']
+            self.eos_id = data_info['eos_id']
+        else:
+            self.data_num_dict = {}
+            self.num_classes = {}
+            self.eos_id = {}
+
+        # update data_num and train_steps
+        self.data_num = 0
+        for problem in problem_list:
+            if problem not in self.data_num_dict:
+                self.data_num += len(
+                    list(self.read_data_fn[problem](self, 'train')))
+                self.data_num_dict[problem] = len(
+                    list(self.read_data_fn[problem](self, 'train')))
+            else:
+                self.data_num += self.data_num_dict[problem]
+
+        data_info = {
+            'data_num': self.data_num_dict,
+            'num_classes': self.num_classes,
+            'eos_id': self.eos_id
+        }
+
+        json.dump(data_info, open(json_path, 'w', encoding='utf8'))
+        return json_path
+
+    def parse_problem_string(self, flag_string):
+        '''Parse problem string
+        Example:
+            CWS|POS|weibo_ner&weibo_cws
+
+            self.run_problem_list = [{CWS:seq_tag}, {POS:seq_tag}, {weibo_ner:seq_tag, weibo_cws:seq_tag}]
+            problem_list = [CWS, POS, weibo_ner, weibo_cws]
+
+        Arguments:
+            flag_string {str} -- problem string
+
+        Returns:
+            list -- problem list
+        '''
+
+        self.problem_str = flag_string
+        # Parse problem string
+        self.run_problem_list = []
+        for flag_chunk in flag_string.split('|'):
+
+            if '&' not in flag_chunk:
+                problem_type = {}
+                problem_type[flag_chunk] = self.problem_type[flag_chunk]
+                self.run_problem_list.append(problem_type)
+            else:
+                problem_type = {}
+                for problem in flag_chunk.split('&'):
+                    problem_type[problem] = self.problem_type[problem]
+                self.run_problem_list.append(problem_type)
+        # if (self.label_transfer or self.mutual_prediction) and self.train_problem is None:
+        if self.train_problem is None:
+            self.train_problem = [p for p in self.run_problem_list]
+
+        problem_list = sorted(re.split(r'[&|]', flag_string))
+        return problem_list
+
+    def prepare_dir(self, base_dir, dir_name, problem_list):
+        base = base_dir if base_dir is not None else 'tmp'
+
+        dir_name = dir_name if dir_name is not None else '_'.join(
+            problem_list)+'_ckpt'
+        self.ckpt_dir = os.path.join(base, dir_name)
+        create_path(self.ckpt_dir)
+        self.params_path = os.path.join(self.ckpt_dir, 'params.json')
+        try:
+            shutil.copy2(os.path.join(self.init_checkpoint,
+                         'vocab.txt'), self.ckpt_dir)
+            shutil.copy2(os.path.join(self.init_checkpoint,
+                                    'bert_config.json'), self.ckpt_dir)
+        except FileNotFoundError:
+            pass
+        self.vocab_file = os.path.join(self.ckpt_dir, 'vocab.txt')
+        self.bert_config = BertConfig.from_json_file(
+            os.path.join(self.ckpt_dir, 'bert_config.json'))
+        self.bert_config.num_hidden_layers = self.bert_num_hidden_layer
+        self.bert_config_dict = self.bert_config.__dict__
+        with open(self.vocab_file, 'r', encoding='utf8') as vf:
+            self.vocab_size = len(vf.readlines())

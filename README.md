@@ -1,7 +1,10 @@
 
 # bert-multitask-as-service
 
-This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service). 
+This is a forked version of [bert-as-service](https://github.com/hanxiao/bert-as-service).
+
+NOTE: When the `max_batch_size` is too large, the results are not reliable. Strange bug, couldn't figure out why.
+
 ## Install
 
 ### Install Server
@@ -26,30 +29,22 @@ pip install .
     A typical trained checkpoint dir looks like below.
 
     ```text
-    CWS_NER_POS_ckpt/
+    bert_serving_ckpt/
+    ├── CTBCWS_label_encoder.pkl
+    ├── CTBPOS_label_encoder.pkl
     ├── CWS_label_encoder.pkl
-    ├── NER_label_encoder.pkl
     ├── POS_label_encoder.pkl
+    ├── WeiboNER_label_encoder.pkl
+    ├── ascws_label_encoder.pkl
     ├── bert_config.json
-    ├── checkpoint
-    ├── events.out.tfevents.1547032536.8ef83f687c31
-    ├── graph.pbtxt
-    ├── model.ckpt-199208.data-00000-of-00001
-    ├── model.ckpt-199208.index
-    ├── model.ckpt-199208.meta
-    ├── model.ckpt-200854.data-00000-of-00001
-    ├── model.ckpt-200854.index
-    ├── model.ckpt-200854.meta
-    ├── model.ckpt-202500.data-00000-of-00001
-    ├── model.ckpt-202500.index
-    ├── model.ckpt-202500.meta
-    ├── model.ckpt-204250.data-00000-of-00001
-    ├── model.ckpt-204250.index
-    ├── model.ckpt-204250.meta
-    ├── model.ckpt-205996.data-00000-of-00001
-    ├── model.ckpt-205996.index
-    ├── model.ckpt-205996.meta
+    ├── bosonner_label_encoder.pkl
+    ├── cityucws_label_encoder.pkl
+    ├── emotion_analysis_label_encoder.pkl
+    ├── export_model
+    ├── msraner_label_encoder.pkl
+    ├── msrcws_label_encoder.pkl
     ├── params.json
+    ├── pkucws_label_encoder.pkl
     └── vocab.txt
     ```
 

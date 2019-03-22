@@ -4,9 +4,10 @@ from ..tokenization import FullTokenizer
 
 from ..utils import (
     get_or_make_label_encoder,
-    create_single_problem_generator,
     BOS_TOKEN,
-    EOS_TOKEN)
+    EOS_TOKEN,
+    PREDICT)
+from ..create_generators import create_single_problem_generator
 
 
 def parse_one(s):
@@ -68,7 +69,8 @@ def ontonotes_ner(params, mode):
     flat_target_list = [t for sublist in target for t in sublist]
     label_encoder = get_or_make_label_encoder(
         params, 'ontonotes_ner', mode, flat_target_list)
-
+    if mode == PREDICT:
+        return inputs_list, target, label_encoder
     return create_single_problem_generator('ontonotes_ner',
                                            inputs_list,
                                            target,
@@ -92,7 +94,8 @@ def ontonotes_cws(params, mode):
     flat_target_list = [t for sublist in target for t in sublist]
     label_encoder = get_or_make_label_encoder(
         params, 'ontonotes_cws', mode, flat_target_list)
-
+    if mode == PREDICT:
+        return inputs_list, target, label_encoder
     return create_single_problem_generator('ontonotes_cws',
                                            inputs_list,
                                            target,
@@ -109,17 +112,25 @@ def ontonotes_chunk(params, mode):
     if mode == 'train':
         with open('data/ontonote/train.fuse.parse', 'r', encoding='utf8') as f:
             raw_data = f.readlines()
+
+        # some label not in train, weird
+        with open('data/ontonote/test.fuse.parse', 'r', encoding='utf8') as f:
+            test_raw_data = f.readlines()
+        all_raw_data = raw_data + test_raw_data
+        _, _, target, inputs_list = zip(*[parse_one(s) for s in raw_data])
+        _, _, all_target, _ = zip(*[parse_one(s) for s in all_raw_data])
+        flat_target_list = [t for sublist in all_target for t in sublist]
+        flat_target_list.extend([BOS_TOKEN, EOS_TOKEN])
     else:
         with open('data/ontonote/test.fuse.parse', 'r', encoding='utf8') as f:
             raw_data = f.readlines()
+        flat_target_list = None
+        _, _, target, inputs_list = zip(*[parse_one(s) for s in raw_data])
 
-    _, _, target, inputs_list = zip(*[parse_one(s) for s in raw_data])
-    flat_target_list = [t for sublist in target for t in sublist]
-    flat_target_list.extend([BOS_TOKEN, EOS_TOKEN])
     label_encoder = get_or_make_label_encoder(
         params, 'ontonotes_chunk', mode, flat_target_list)
-    params.eos_id['ontonotes_chunk'] = label_encoder.transform([EOS_TOKEN])[0]
-
+    if mode == PREDICT:
+        return inputs_list, target, label_encoder
     return create_single_problem_generator(
         'ontonotes_chunk',
         inputs_list,

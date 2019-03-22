@@ -1,18 +1,17 @@
 
 
 import re
-from glob import glob
 
 from ..tokenization import FullTokenizer
 
-from ..utils import (create_pretraining_generator,
-                     create_single_problem_generator,
-                     get_or_make_label_encoder, BOS_TOKEN, EOS_TOKEN)
+from ..utils import (
+    get_or_make_label_encoder, BOS_TOKEN, EOS_TOKEN)
+from ..create_generators import create_pretraining_generator, create_single_problem_generator
 
 from .ner_data import gold_horse_ent_type_process_fn, read_ner_data
 
 
-def WeiboFakeCLS(params, mode):
+def weibo_fake_cls(params, mode):
     """Just a test problem to test multiproblem support
 
     Arguments:
@@ -29,12 +28,12 @@ def WeiboFakeCLS(params, mode):
     inputs_list = data['inputs'][:100]
     target_list = data['target'][:100]
 
-    new_target_list = [1 if len(set(t)) > 1 else 0 for t in target_list]
+    new_target_list = ['1' if len(set(t)) > 1 else '0' for t in target_list]
 
     label_encoder = get_or_make_label_encoder(
-        params, 'WeiboFakeCLS', mode, new_target_list, 'O')
+        params, 'weibo_fake_cls', mode, new_target_list, '0')
 
-    return create_single_problem_generator('WeiboFakeCLS',
+    return create_single_problem_generator('weibo_fake_cls',
                                            inputs_list,
                                            new_target_list,
                                            label_encoder,
@@ -61,8 +60,6 @@ def weibo_fake_seq2seq_tag(params, mode: str):
         mode,
         [BOS_TOKEN, '1', '2', EOS_TOKEN],
         zero_class=BOS_TOKEN)
-    params.eos_id['weibo_fake_seq2seq_tag'] = label_encoder.transform(
-        [EOS_TOKEN])[0]
 
     return create_single_problem_generator(
         'weibo_fake_seq2seq_tag',
@@ -74,7 +71,7 @@ def weibo_fake_seq2seq_tag(params, mode: str):
         mode)
 
 
-def WeiboPretrain(params, mode):
+def weibo_pretrain(params, mode):
 
     sentence_split = r'[.!?。？！]'
 
@@ -97,7 +94,7 @@ def WeiboPretrain(params, mode):
                 segmented_list[-1].append(list(sentence))
     segmented_list = [doc for doc in segmented_list if doc]
 
-    return create_pretraining_generator('WeiboPretrain',
+    return create_pretraining_generator('weibo_pretrain',
                                         segmented_list,
                                         None,
                                         None,
