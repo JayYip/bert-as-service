@@ -11,6 +11,7 @@ from collections import defaultdict
 from datetime import datetime
 from multiprocessing import Process
 import tensorflow as tf
+import pickle
 
 import numpy as np
 import zmq
@@ -19,10 +20,10 @@ from termcolor import colored
 from zmq.utils import jsonapi
 import re
 
-from .bert_multitask_learning.tokenization import FullTokenizer
-from .bert_multitask_learning.params import Params
-from .bert_multitask_learning.utils import get_or_make_label_encoder
-from .bert_multitask_learning.input_fn import to_serving_input
+from bert_multitask_learning import FullTokenizer
+from bert_multitask_learning import get_or_make_label_encoder
+from bert_multitask_learning import BaseParams
+from bert_multitask_learning import to_serving_input
 
 from .helper import *
 from .zmq_decor import multi_socket
@@ -72,11 +73,12 @@ class BertServer(threading.Thread):
         self.logger.info(
             'freeze, optimize and export graph, could take a while...')
 
-        params = Params()
+        params = BaseParams()
+        params.from_json(os.path.join(self.model_dir, 'params.json'))
         base_dir, dir_name = os.path.split(self.model_dir)
         params.assign_problem(
-            self.args.problem, base_dir=base_dir, dir_name=dir_name)
-        params.from_json()
+            self.args.problem, base_dir=base_dir, dir_name=dir_name, is_serve=True)
+
         self.max_seq_len = params.max_seq_len
         setattr(self.args, 'params', params)
 
@@ -362,11 +364,12 @@ class BertWorker(Process):
         self.graph_path = graph_path
         self.args = args
 
-        self.params = Params()
+        self.params = BaseParams()
+        self.params.from_json(os.path.join(self.model_dir, 'params.json'))
         base_dir, dir_name = os.path.split(self.model_dir)
         self.params.assign_problem(
-            self.args.problem, base_dir=base_dir, dir_name=dir_name)
-        self.params.from_json()
+            self.args.problem, base_dir=base_dir, dir_name=dir_name, is_serve=True)
+
         self.max_seq_len = self.params.max_seq_len
         self.problem_list = sorted(re.split(r'[&|]', self.args.problem))
 
@@ -406,19 +409,21 @@ class BertWorker(Process):
                 self.problem_list[ind]: output[ind]
                 for ind in range(len(self.problem_list))}
             prediction_dict.update({'client_id': features['client_id'],
-                                    'input_ids': features['input_ids']})
+                                    'raw_text': features['raw_text']})
 
             return EstimatorSpec(mode=mode, predictions=prediction_dict)
 
         config = tf.ConfigProto(
-            device_count={'GPU': 0 if self.device_id < 0 else 1})
+            device_count={'GPU': 0 if self.device_id < 0 else 1},
+            intra_op_parallelism_threads=40,
+            inter_op_parallelism_threads=40)
         config.gpu_options.allow_growth = True
         config.gpu_options.per_process_gpu_memory_fraction = self.gpu_memory_fraction
         config.log_device_placement = False
 
         return Estimator(
             model_fn=model_fn,
-            # model_dir=self.model_dir,
+            model_dir=self.params.ckpt_dir,
             config=RunConfig(session_config=config))
 
     def run(self):
@@ -439,8 +444,9 @@ class BertWorker(Process):
         sink.connect(self.sink_address)
         for r in estimator.predict(self.input_fn_builder(receivers, tf), yield_single_examples=False):
             client_id = r.pop('client_id')
-            r = parse_prediction(r, self.label_encoder_dict, self.tokenizer)
-            r.pop('input_ids')
+            r = parse_prediction(r, self.label_encoder_dict,
+                                 self.tokenizer, self.params)
+            r.pop('raw_text')
             send_dict_ndarray(sink, client_id, r)
             # self.logger.info('job done\tsize: %s\tclient: %s' %
             #                  (r['encodes'].shape, r['client_id']))
@@ -450,7 +456,7 @@ class BertWorker(Process):
     def input_fn_builder(self, socks, tf):
         from .bert.extract_features import convert_lst_to_features
         # from .bert.tokenization import FullTokenizer
-        from .bert_multitask_learning.tokenization import FullTokenizer
+        from bert_multitask_learning import FullTokenizer
 
         def gen():
             tokenizer = FullTokenizer(
@@ -469,16 +475,14 @@ class BertWorker(Process):
                         msg = jsonapi.loads(raw_msg)
                         self.logger.info('new job\tsocket: %d\tsize: %d\tclient: %s' % (
                             sock_idx, len(msg), client_id))
-                        # check if msg is a list of list, if yes consider the input is already tokenized
-                        is_tokenized = all(isinstance(el, list) for el in msg)
                         # tmp_f = list(convert_lst_to_features(msg, self.max_seq_len, tokenizer, self.logger,
                         #                                      is_tokenized, self.mask_cls_sep))
                         self.params.max_seq_len = self.max_seq_len
                         tmp_f = to_serving_input(
                             msg, self.params, mode='predict', tokenizer=tokenizer)
-
                         yield_dict = {
                             'client_id': client_id,
+                            'raw_text': msg,
                             'input_ids': [],
                             'input_mask': [],
                             'segment_ids': []
@@ -494,12 +498,14 @@ class BertWorker(Process):
                 output_types={'input_ids': tf.int32,
                               'input_mask': tf.int32,
                               'segment_ids': tf.int32,
-                              'client_id': tf.string},
+                              'client_id': tf.string,
+                              'raw_text': tf.string},
                 output_shapes={
                     'client_id': (),
                     'input_ids': (None, self.max_seq_len),
                     'input_mask': (None, self.max_seq_len),
-                    'segment_ids': (None, self.max_seq_len)}).prefetch(self.prefetch_size))
+                    'segment_ids': (None, self.max_seq_len),
+                    'raw_text': (None, )}).prefetch(self.prefetch_size))
 
         return input_fn
 

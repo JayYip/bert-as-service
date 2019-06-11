@@ -2,11 +2,9 @@ import numpy as np
 
 
 def remove_special_tokens(l1, l2):
-    ind_list = []
-    for ind, char in enumerate(l1):
-        if char in ['[PAD]', '[CLS]', '[SEP]']:
-            ind_list.append(ind)
-    return [e for ie, e in enumerate(l1) if ie not in ind_list], [e for ie, e in enumerate(l2) if ie not in ind_list]
+    l2 = l2[1:]
+    l2 = l2[:len(l1)]
+    return l1, l2
 
 
 def merge_entity(tokens, labels):
@@ -33,13 +31,21 @@ def merge_entity(tokens, labels):
     return merged_tokens, merged_labels
 
 
+def get_model_index(in_array):
+    if len(in_array.shape) == 3:
+        in_array = np.argmax(in_array, axis=-1)
+    return in_array
+
+
 def ner(pred, label_encoder, tokenizer, problem, extract_ent=True):
 
     result_list = []
+    pred[problem] = get_model_index(pred[problem])
 
-    for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
-        tokens = tokenizer.convert_ids_to_tokens(input_ids)
-        tokens = [t.replace('[unused1]', ' ') for t in tokens]
+    for input_ids, ner_pred in zip(pred['raw_text'].tolist(), pred[problem].tolist()):
+        # tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        # tokens = [t.replace('[unused1]', ' ') for t in tokens]
+        tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
 
         tokens, labels = remove_special_tokens(tokens, labels)
@@ -58,10 +64,11 @@ def ner(pred, label_encoder, tokenizer, problem, extract_ent=True):
 
 def cws(pred, label_encoder, tokenizer, problem):
     result_list = []
-
-    for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
-        tokens = tokenizer.convert_ids_to_tokens(input_ids)
-        tokens = [t.replace('[unused1]', ' ') for t in tokens]
+    pred[problem] = get_model_index(pred[problem])
+    for input_ids, ner_pred in zip(pred['raw_text'].tolist(), pred[problem].tolist()):
+        # tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        # tokens = [t.replace('[unused1]', ' ') for t in tokens]
+        tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
         tokens, labels = remove_special_tokens(tokens, labels)
         output_str = ''
@@ -75,12 +82,13 @@ def cws(pred, label_encoder, tokenizer, problem):
     return result_list
 
 
-def pos(pred, label_encoder, tokenizer, problem):
+def seq_tag(pred, label_encoder, tokenizer, problem):
     result_list = []
-
-    for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
-        tokens = tokenizer.convert_ids_to_tokens(input_ids)
-        tokens = [t.replace('[unused1]', ' ') for t in tokens]
+    pred[problem] = get_model_index(pred[problem])
+    for input_ids, ner_pred in zip(pred['raw_text'].tolist(), pred[problem].tolist()):
+        # tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        # tokens = [t.replace('[unused1]', ' ') for t in tokens]
+        tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
 
         tokens, labels = remove_special_tokens(tokens, labels)
@@ -96,36 +104,92 @@ def cls(pred, label_encoder, tokenizer, problem):
     result_list = []
     for pred in pred[problem].tolist():
         label = label_encoder.inverse_transform([np.argmax(pred)])
-        result_list.append(label)
+        result_list.append(label[0])
     return result_list
 
 
-def parse_prediction(pred, label_encoder_dict, tokenizer):
+def consolidate_ner(pred: dict, del_origin=True):
+    new_pred = {'ner': []}
+    for input_ind in range(len(pred['boson_ner'])):
+        new_pred['ner'].append([])
+
+        for ent, ent_type in pred['weibo_ner'][input_ind]:
+            if ent_type in ['LOC', 'GPE']:
+                new_pred['ner'][-1].append([ent, ent_type])
+        for ent, ent_type in pred['boson_ner'][input_ind]:
+            if ent_type != 'LOC':
+                new_pred['ner'][-1].append([ent, ent_type])
+    if del_origin:
+        del pred['boson_ner'], pred['weibo_ner']
+    pred.update(new_pred)
+    return pred
+
+
+def text_generation(pred, label_encoder, tokenizer, problem):
+    result_list = []
+    pred[problem] = get_model_index(pred[problem])
+    for text_gen_pred in pred[problem].tolist():
+
+        labels = label_encoder.convert_ids_to_tokens(text_gen_pred)
+        result_list.append(''.join(labels).replace('##', ''))
+    return result_list
+
+
+def tag_generation(pred, label_encoder, tokenizer, problem):
+    result_list = []
+    pred[problem] = get_model_index(pred[problem])
+    for text_gen_pred in pred[problem].tolist():
+
+        labels = label_encoder.inverse_transform(text_gen_pred)
+    return result_list
+
+
+def parse_prediction(pred, label_encoder_dict, tokenizer, params):
     for problem in label_encoder_dict:
-        if 'NER' in problem.upper():
+        if 'NER' == problem.split('_')[-1].upper():
             pred[problem] = np.array(ner(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
-                problem))
-        elif 'CWS' in problem.upper():
+                problem,
+                extract_ent=True))
+        elif 'CWS' == problem.split('_')[-1].upper():
             pred[problem] = np.array(cws(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
-        elif 'POS' in problem.upper():
-            pred[problem] = np.array(pos(
+        elif params.problem_type[problem] == 'seq_tag':
+            pred[problem] = np.array(seq_tag(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem))
-        elif 'emotion_analysis' in problem.lower():
-            pred[problem] = np.array(cls(
+        elif params.problem_type[problem] == 'seq2seq_text':
+            pred[problem] = np.array(text_generation(
                 pred,
                 label_encoder_dict[problem],
                 tokenizer,
                 problem
             ))
+        elif params.problem_type[problem] == 'seq2seq_tag':
+            pred[problem] = np.array(tag_generation(
+                pred,
+                label_encoder_dict[problem],
+                tokenizer,
+                problem
+            ))
+        else:
+            try:
+                pred[problem] = np.array(cls(
+                    pred,
+                    label_encoder_dict[problem],
+                    tokenizer,
+                    problem
+                ))
+            except:
+                pass
+
+    # pred = consolidate_ner(pred, del_origin=False)
 
     return pred

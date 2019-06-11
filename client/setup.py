@@ -1,29 +1,28 @@
 from os import path
+import codecs
 
 from setuptools import setup, find_packages
 
-# setup metainfo
-libinfo_py = path.join('bert_serving', 'client', '__init__.py')
-libinfo_content = open(libinfo_py, 'r').readlines()
-version_line = [l.strip() for l in libinfo_content if l.startswith('__version__')][0]
-exec(version_line)  # produce __version__
+with codecs.open('README.md', 'r', 'utf8') as reader:
+    long_description = reader.read()
 
-with open('requirements.txt') as f:
-    require_packages = [line[:-1] if line[-1] == '\n' else line for line in f]
+
+with codecs.open('requirements.txt', 'r', 'utf8') as reader:
+    install_requires = list(map(lambda x: x.strip(), reader.readlines()))
 
 setup(
     name='bert_serving_client',
-    version=__version__,  # noqa
-    description='Mapping a variable-length sentence to a fixed-length vector using BERT model (Client)',
-    url='https://github.com/hanxiao/bert-as-service',
+    version='0.1.0',  # noqa
+    description='A service to serve bert_multitask_learning models(Client)',
+    url='https://github.com/JayYip/bert-as-service',
     long_description=open('README.md', 'r').read(),
     long_description_content_type='text/markdown',
-    author='Han Xiao',
-    author_email='artex.xh@gmail.com',
+    author='Jay Yip',
+    author_email='junpang.yip@gmail.com',
     license='MIT',
     packages=find_packages(),
     zip_safe=False,
-    install_requires=require_packages,
+    install_requires=install_requires,
     classifiers=(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',

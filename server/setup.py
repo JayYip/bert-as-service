@@ -1,36 +1,28 @@
 from os import path
+import codecs
 
 from setuptools import setup, find_packages
 
-# setup metainfo
-libinfo_py = path.join('bert_serving', 'server', '__init__.py')
-libinfo_content = open(libinfo_py, 'r').readlines()
-version_line = [l.strip() for l in libinfo_content if l.startswith('__version__')][0]
-exec(version_line)  # produce __version__
+with codecs.open('README.md', 'r', 'utf8') as reader:
+    long_description = reader.read()
+
+
+with codecs.open('requirements.txt', 'r', 'utf8') as reader:
+    install_requires = list(map(lambda x: x.strip(), reader.readlines()))
 
 setup(
     name='bert_serving_server',
-    version=__version__,
-    description='Mapping a variable-length sentence to a fixed-length vector using BERT model (Server)',
-    url='https://github.com/hanxiao/bert-as-service',
-    long_description=open('README.md', 'r').read(),
+    version='0.1.0',
+    description='A service to serve bert_multitask_learning models(server)',
+    url='https://github.com/JayYip/bert-as-service',
+    long_description=long_description,
     long_description_content_type='text/markdown',
-    author='Han Xiao',
-    author_email='artex.xh@gmail.com',
+    author='Jay Yip',
+    author_email='junpang.yip@gmail.com',
     license='MIT',
     packages=find_packages(),
     zip_safe=False,
-    install_requires=[
-        'numpy',
-        'six',
-        'pyzmq>=17.1.0',
-        'GPUtil>=1.3.0',
-        'termcolor>=1.1'
-    ],
-    extras_require={
-        'tensorflow': ['tensorflow>=1.10.0'],
-        'tensorflow_gpu': ['tensorflow-gpu>=1.10.0'],
-    },
+    install_requires=install_requires,
     classifiers=(
         'Programming Language :: Python :: 3.6',
         'License :: OSI Approved :: MIT License',
