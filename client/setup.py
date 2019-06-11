@@ -12,7 +12,7 @@ with codecs.open('requirements.txt', 'r', 'utf8') as reader:
 
 setup(
     name='bert_multitask_client',
-    version='0.1.0',  # noqa
+    version='0.1.1',  # noqa
     description='A service to serve bert_multitask_learning models(Client)',
     url='https://github.com/JayYip/bert-multitask-service',
     long_description=open('README.md', 'r').read(),

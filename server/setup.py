@@ -12,7 +12,7 @@ with codecs.open('requirements.txt', 'r', 'utf8') as reader:
 
 setup(
     name='bert_multitask_server',
-    version='0.1.0',
+    version='0.1.1',
     description='A service to serve bert_multitask_learning models(server)',
     url='https://github.com/JayYip/bert-multitask-service',
     long_description=long_description,
