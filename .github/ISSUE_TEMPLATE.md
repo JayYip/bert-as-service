@@ -28,7 +28,7 @@
 I'm using this command to start the server:
 
 ```bash
-bert-serving-start YOUR_SERVER_ARGS
+bert-multitask-serving-start YOUR_SERVER_ARGS
 ```
 
 and calling the server via:

@@ -28,7 +28,7 @@ pip install bert-multitask-client
 2. Start server using CLI
 
     ```bash
-    bert-serving-start -model_dir ~/CWS_NER_POS_ckpt/ -num_worker=4 -problem "CWS|NER|POS"
+    bert-multitask-serving-start -model_dir ~/CWS_NER_POS_ckpt/ -num_worker=4 -problem "CWS|NER|POS"
     ```
 
 3. Use Client to Get Prediction
@@ -68,7 +68,7 @@ pip install bert-multitask-client
 2. 用CLI启动服务
 
     ```bash
-    bert-serving-start -model_dir models/ -num_worker=4 -problem "fake_problem"
+    bert-multitask-serving-start -model_dir models/ -num_worker=4 -problem "fake_problem"
     ```
 
 3. 用客户端获取预测结果
