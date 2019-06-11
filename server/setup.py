@@ -11,10 +11,10 @@ with codecs.open('requirements.txt', 'r', 'utf8') as reader:
     install_requires = list(map(lambda x: x.strip(), reader.readlines()))
 
 setup(
-    name='bert_serving_server',
+    name='bert_multitask_server',
     version='0.1.0',
     description='A service to serve bert_multitask_learning models(server)',
-    url='https://github.com/JayYip/bert-as-service',
+    url='https://github.com/JayYip/bert-multitask-service',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Jay Yip',
