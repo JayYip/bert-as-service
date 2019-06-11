@@ -30,7 +30,7 @@ setup(
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
     ),
     scripts=[
-        'bin/bert-serving-start',
+        'bin/bert-multitask-serving-start',
     ],
     keywords='bert nlp tensorflow machine learning sentence encoding embedding serving',
 )

@@ -1,7 +1,7 @@
 setuptools==40.5.0
 tqdm==4.28.1
 six==1.11.0
-tensorflow_gpu==1.12.0
+tensorflow_gpu>=1.12.0
 numpy==1.15.4
 tensor2tensor==1.11.0
 termcolor==1.1.0
