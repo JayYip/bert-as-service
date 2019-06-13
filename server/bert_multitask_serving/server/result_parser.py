@@ -152,7 +152,7 @@ def parse_prediction(pred, label_encoder_dict, tokenizer, params):
                 label_encoder_dict[problem],
                 tokenizer,
                 problem,
-                extract_ent=True))
+                extract_ent=False))
         elif 'CWS' == problem.split('_')[-1].upper():
             pred[problem] = np.array(cws(
                 pred,
