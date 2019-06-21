@@ -409,7 +409,8 @@ class BertWorker(Process):
                 self.problem_list[ind]: output[ind]
                 for ind in range(len(self.problem_list))}
             prediction_dict.update({'client_id': features['client_id'],
-                                    'raw_text': features['raw_text']})
+                                    'raw_text': features['raw_text'],
+                                    'input_ids': features['input_ids']})
 
             return EstimatorSpec(mode=mode, predictions=prediction_dict)
 

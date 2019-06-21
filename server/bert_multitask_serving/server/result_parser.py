@@ -1,10 +1,27 @@
 import numpy as np
 
 
-def remove_special_tokens(l1, l2):
-    l2 = l2[1:]
-    l2 = l2[:len(l1)]
-    return l1, l2
+def merge_subtoken(tokens, labels):
+    merged_tokens = []
+    merged_labels = []
+    assert len(tokens) == len(labels)
+    for t, l in zip(tokens, labels):
+        if t.startswith('##'):
+            merged_tokens[-1] += t.replace('##', '')
+        else:
+            merged_tokens.append(t)
+            merged_labels.append(l)
+    return merged_tokens, merged_labels
+
+
+def remove_special_merge_subtoken(tokens, labels):
+    tokens = [c for c in tokens if c not in (
+        '[CLS]', '[SEP]', '[PAD]')]
+    labels = labels[1:]
+    labels = labels[:len(tokens)]
+    tokens, labels = merge_subtoken(tokens, labels)
+
+    return tokens, labels
 
 
 def merge_entity(tokens, labels):
@@ -42,15 +59,18 @@ def ner(pred, label_encoder, tokenizer, problem, extract_ent=True):
     result_list = []
     pred[problem] = get_model_index(pred[problem])
 
-    for input_ids, ner_pred in zip(pred['raw_text'].tolist(), pred[problem].tolist()):
-        # tokens = tokenizer.convert_ids_to_tokens(input_ids)
-        # tokens = [t.replace('[unused1]', ' ') for t in tokens]
-        tokens = list(input_ids.decode('utf8'))
+    # for input_ids, ner_pred in zip(pred['raw_text'].tolist(), pred[problem].tolist()):
+    for input_ids, ner_pred in zip(pred['input_ids'].tolist(), pred[problem].tolist()):
+        tokens = tokenizer.convert_ids_to_tokens(input_ids)
+        tokens = [t.replace('[unused1]', ' ') for t in tokens]
+        # tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
 
-        tokens, labels = remove_special_tokens(tokens, labels)
+        tokens, labels = remove_special_merge_subtoken(tokens, labels)
+        tokens, labels = merge_subtoken(tokens, labels)
 
         tokens, labels = merge_entity(tokens, labels)
+        tokens = [t.replace('#', '') for t in tokens]
         if extract_ent:
 
             result_list.append([(ent, ent_type) for ent, ent_type in zip(
@@ -70,7 +90,7 @@ def cws(pred, label_encoder, tokenizer, problem):
         # tokens = [t.replace('[unused1]', ' ') for t in tokens]
         tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
-        tokens, labels = remove_special_tokens(tokens, labels)
+        tokens, labels = remove_special_merge_subtoken(tokens, labels)
         output_str = ''
         for char, char_label in zip(tokens, labels):
             if char_label.lower() in ['s', 'e', 'o']:
@@ -91,7 +111,7 @@ def seq_tag(pred, label_encoder, tokenizer, problem):
         tokens = list(input_ids.decode('utf8'))
         labels = label_encoder.inverse_transform(ner_pred)
 
-        tokens, labels = remove_special_tokens(tokens, labels)
+        tokens, labels = remove_special_merge_subtoken(tokens, labels)
         tokens, labels = merge_entity(tokens, labels)
 
         result_list.append(
@@ -191,5 +211,6 @@ def parse_prediction(pred, label_encoder_dict, tokenizer, params):
                 pass
 
     # pred = consolidate_ner(pred, del_origin=False)
+    del pred['input_ids']
 
     return pred
